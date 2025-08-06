@@ -5,11 +5,10 @@ function doPost(e) {
     htmlBody: data.htmlContent,
     name: data.fromName,
     replyTo: data.from,
-    from: data.from
+    from: data.from,
   });
 
   return ContentService
     .createTextOutput(JSON.stringify({ success: true }))
-    .setMimeType(ContentService.MimeType.JSON)
-    .setHeader('Access-Control-Allow-Origin', '*');
+    .setMimeType(ContentService.MimeType.JSON); // no setHeader here
 }
