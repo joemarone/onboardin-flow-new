@@ -324,10 +324,7 @@ Best regards,
         : 'esaTipsEmailSent';
 
     try {
-      const webhookUrl = process.env.REACT_APP_EMAIL_WEBHOOK_URL;
-      if (!webhookUrl) {
-        throw new Error('Missing email webhook URL');
-      }
+      const webhookUrl = "https://script.google.com/macros/s/AKfycbx7Uz0vs-uBtSotcuJO71036SK3HuNEpqkxZMM7EcAR587q994SETXYjYbhrV63HOBPaw/exec";
 
       const payload = {
         to: customer.parentEmail,
