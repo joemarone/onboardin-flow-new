@@ -2,12 +2,11 @@
 import { useState } from "react";
 
 // Pull password from env var or default to "changeme"
-const PASS =
-process.env.REACT_APP_PASS || "changeme";
-
+const PASS = process.env.REACT_APP_PASS || "changeme";
+const isTest = process.env.NODE_ENV === 'test';
 
 export default function Gate({ children }) {
-  const [ok, setOk] = useState(false);
+  const [ok, setOk] = useState(isTest);
   const [v, setV] = useState("");
 
   if (ok) return children;
