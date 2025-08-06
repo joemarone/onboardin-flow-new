@@ -56,11 +56,11 @@ export default function ParentForm({ onCreated }) {
         <input type="checkbox" checked={form.transfer} onChange={e=>set('transfer', e.target.checked)} />
         Transfer?
       </label>
-      <select value={form.advisor_id || ''} onChange={e=>set('advisor_id', e.target.value || null)}>
+      <select value={form.advisor_id || ''} onChange={e=>set('advisor_id', e.target.value ? Number(e.target.value) : null)}>
         <option value=''>Select Advisor</option>
         {advisors.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
       </select>
-      <select value={form.support_id || ''} onChange={e=>set('support_id', e.target.value || null)}>
+      <select value={form.support_id || ''} onChange={e=>set('support_id', e.target.value ? Number(e.target.value) : null)}>
         <option value=''>Select Support</option>
         {supports.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
       </select>
