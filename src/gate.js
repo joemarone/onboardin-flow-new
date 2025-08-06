@@ -3,7 +3,8 @@ import { useState } from "react";
 
 // Pull password from env var or default to "changeme"
 const PASS =
-  import.meta?.env?.VITE_APP_PASS || process.env.REACT_APP_PASS || "changeme";
+process.env.REACT_APP_PASS || "changeme";
+
 
 export default function Gate({ children }) {
   const [ok, setOk] = useState(false);

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Mail, Calendar, CheckCircle, Clock, Users, Send, Eye, Plus, Edit2, Trash2, Check, X, Settings, ChevronUp, ChevronDown } from 'lucide-react';
+import { User, Mail, Calendar, CheckCircle, Clock, Users, Send, Eye, Plus, Edit2, Trash2, Check, X, Settings, ChevronUp, ChevronDown, FileText } from 'lucide-react';
 
 const SalesFlowApp = () => {
   const [programAdvisors, setProgramAdvisors] = useState([
@@ -38,8 +38,9 @@ const SalesFlowApp = () => {
   const [showTemplateEditor, setShowTemplateEditor] = useState(false);
   const [templateModes, setTemplateModes] = useState({
     confirmation: 'text',
-    enrollment: 'text', 
-    parentSupport: 'text'
+    enrollment: 'text',
+    parentSupport: 'text',
+    esaTips: 'text'
   });
 
   const addAdvisor = () => {
@@ -87,9 +88,29 @@ const SalesFlowApp = () => {
     }
   };
 
+  const addNote = (customerId) => {
+    const noteText = window.prompt('Enter note');
+    if (!noteText) return;
+    const note = { text: noteText, timestamp: new Date() };
+    setCustomers(customers.map(c => {
+      if (c.id === customerId) {
+        const updatedCustomer = { ...c, notes: [...(c.notes || []), note] };
+        if (selectedCustomer && selectedCustomer.id === customerId) {
+          setSelectedCustomer(updatedCustomer);
+        }
+        return updatedCustomer;
+      }
+      return c;
+    }));
+  };
+
   const validateEmail = (email) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(email);
+  };
+
+  const formatDateTime = (date) => {
+    return new Date(date).toLocaleString();
   };
 
   const [emailTemplates, setEmailTemplates] = useState({
@@ -144,6 +165,15 @@ I'll be checking in regularly to ensure everything is going smoothly. Feel free 
 
 Best,
 {{supportName}}`
+    },
+    esaTips: {
+      subject: 'Tips for Using ESA Funds',
+      body: `Hi {{parentFirstName}},
+
+Here are a few tips to help you make the most of your ESA funds for {{studentFirstName}}.
+
+Best regards,
+{{advisorName}}`
     }
   });
 
@@ -179,14 +209,16 @@ Best,
       timeline: {
         initial: new Date(),
         converted: false,
-        esaFunds: null,
+        esaFunds: false,
         confirmationEmailSent: null,
+        esaTipsEmailSent: null,
         consentsCompleted: false,
         paymentCompleted: false,
         enrollmentEmailSent: null,
         parentSupportEmailSent: null,
         completed: null
-      }
+      },
+      notes: []
     };
     
     setCustomers([...customers, customer]);
@@ -210,17 +242,18 @@ Best,
         
         let step = customer.step;
         let status = customer.status;
-        
-        if (updatedTimeline.converted && updatedTimeline.esaFunds !== null && !updatedTimeline.confirmationEmailSent) {
+
+        if (!updatedTimeline.confirmationEmailSent) {
           step = 1;
           status = 'step-1';
-        } else if (updatedTimeline.confirmationEmailSent && (!updatedTimeline.consentsCompleted || !updatedTimeline.paymentCompleted)) {
+        } else if (
+          !updatedTimeline.consentsCompleted ||
+          !updatedTimeline.paymentCompleted ||
+          !updatedTimeline.enrollmentEmailSent
+        ) {
           step = 2;
           status = 'step-2';
-        } else if (updatedTimeline.consentsCompleted && updatedTimeline.paymentCompleted && !updatedTimeline.enrollmentEmailSent) {
-          step = 2;
-          status = 'step-2';
-        } else if (updatedTimeline.enrollmentEmailSent && !updatedTimeline.parentSupportEmailSent) {
+        } else if (!updatedTimeline.parentSupportEmailSent) {
           step = 3;
           status = 'step-3';
         } else if (updatedTimeline.parentSupportEmailSent) {
@@ -277,9 +310,14 @@ Best,
     console.log(`Subject: ${template.subject}`);
     console.log(`Content: ${content}`);
     
-    const timelineField = type === 'confirmation' ? 'confirmationEmailSent' : 
-                         type === 'enrollment' ? 'enrollmentEmailSent' : 
-                         'parentSupportEmailSent';
+      const timelineField =
+        type === 'confirmation'
+          ? 'confirmationEmailSent'
+          : type === 'enrollment'
+          ? 'enrollmentEmailSent'
+          : type === 'parentSupport'
+          ? 'parentSupportEmailSent'
+          : 'esaTipsEmailSent';
     
     updateCustomerStatus(customerId, timelineField, new Date());
     
@@ -531,6 +569,13 @@ Best,
                             <Eye className="h-4 w-4" />
                           </button>
                           <button
+                            onClick={() => addNote(customer.id)}
+                            className="text-gray-600 hover:text-gray-900"
+                            title="Add Note"
+                          >
+                            <FileText className="h-4 w-4" />
+                          </button>
+                          <button
                             onClick={() => deleteCustomer(customer.id)}
                             className="text-red-600 hover:text-red-900"
                             title="Delete Customer"
@@ -582,6 +627,7 @@ Best,
                     type="email"
                     value={newCustomer.parentEmail}
                     onChange={(e) => setNewCustomer({...newCustomer, parentEmail: e.target.value})}
+                    required
                     className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -875,8 +921,29 @@ Best,
                     <p><span className="font-medium">Transfer:</span> {selectedCustomer.isTransfer ? 'Yes' : 'No'}</p>
                   </div>
                 </div>
+
+                <div>
+                  <h4 className="text-lg font-medium text-gray-900 mb-3">Internal Notes</h4>
+                  {selectedCustomer.notes && selectedCustomer.notes.length > 0 ? (
+                    <ul className="space-y-1 text-sm">
+                      {selectedCustomer.notes.map((note, idx) => (
+                        <li key={idx} className="border-b pb-1">
+                          <span className="font-medium">{formatDateTime(note.timestamp)}:</span> {note.text}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-gray-500">No notes yet.</p>
+                  )}
+                  <button
+                    onClick={() => addNote(selectedCustomer.id)}
+                    className="mt-2 text-xs text-blue-500 hover:underline"
+                  >
+                    Add Note
+                  </button>
+                </div>
               </div>
-              
+
               <div className="space-y-6">
                 {/* Step 1 */}
                 <div className="p-4 rounded-lg border-2 border-blue-200 bg-blue-50">
@@ -891,19 +958,51 @@ Best,
                       />
                       <label className="ml-2 text-sm font-medium text-gray-700">Marked as "Converted"</label>
                     </div>
-                    
+
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedCustomer.timeline.esaFunds}
+                        onChange={(e) => updateCustomerStatus(selectedCustomer.id, 'esaFunds', e.target.checked)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label className="ml-2 text-sm font-medium text-gray-700">Using ESA funds?</label>
+                    </div>
+
                     {selectedCustomer.timeline.converted && (
-                      <button
-                        onClick={() => {
-                          setEmailType('confirmation');
-                          setEmailContent(emailTemplates.confirmation.body);
-                          setShowEmailModal(true);
-                        }}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center"
-                      >
-                        <Send className="h-4 w-4 mr-2" />
-                        Send Confirmation Email
-                      </button>
+                      selectedCustomer.timeline.confirmationEmailSent ? (
+                        <p className="text-sm text-gray-600">Confirmation email sent on {formatDateTime(selectedCustomer.timeline.confirmationEmailSent)}</p>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setEmailType('confirmation');
+                            setEmailContent(emailTemplates.confirmation.body);
+                            setShowEmailModal(true);
+                          }}
+                          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center"
+                        >
+                          <Send className="h-4 w-4 mr-2" />
+                          Send Confirmation Email
+                        </button>
+                      )
+                    )}
+
+                    {selectedCustomer.timeline.esaFunds && (
+                      selectedCustomer.timeline.esaTipsEmailSent ? (
+                        <p className="text-sm text-gray-600">ESA Tips email sent on {formatDateTime(selectedCustomer.timeline.esaTipsEmailSent)}</p>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setEmailType('esaTips');
+                            setEmailContent(emailTemplates.esaTips.body);
+                            setShowEmailModal(true);
+                          }}
+                          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center"
+                        >
+                          <Send className="h-4 w-4 mr-2" />
+                          Send ESA Tips Email
+                        </button>
+                      )
                     )}
                   </div>
                 </div>
@@ -922,7 +1021,7 @@ Best,
                         />
                         <label className="ml-2 text-sm font-medium text-gray-700">Consent completed</label>
                       </div>
-                      
+
                       <div className="flex items-center">
                         <input
                           type="checkbox"
@@ -932,19 +1031,23 @@ Best,
                         />
                         <label className="ml-2 text-sm font-medium text-gray-700">Payment completed</label>
                       </div>
-                      
+
                       {selectedCustomer.timeline.consentsCompleted && selectedCustomer.timeline.paymentCompleted && (
-                        <button
-                          onClick={() => {
-                            setEmailType('enrollment');
-                            setEmailContent(emailTemplates.enrollment.body);
-                            setShowEmailModal(true);
-                          }}
-                          className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 flex items-center"
-                        >
-                          <Send className="h-4 w-4 mr-2" />
-                          Send Enrollment Email
-                        </button>
+                        selectedCustomer.timeline.enrollmentEmailSent ? (
+                          <p className="text-sm text-gray-600">Enrollment email sent on {formatDateTime(selectedCustomer.timeline.enrollmentEmailSent)}</p>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setEmailType('enrollment');
+                              setEmailContent(emailTemplates.enrollment.body);
+                              setShowEmailModal(true);
+                            }}
+                            className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 flex items-center"
+                          >
+                            <Send className="h-4 w-4 mr-2" />
+                            Send Enrollment Email
+                          </button>
+                        )
                       )}
                     </div>
                   )}
@@ -969,7 +1072,7 @@ Best,
                           ))}
                         </select>
                       </div>
-                      
+
                       <button
                         onClick={() => {
                           setEmailType('parentSupport');
@@ -983,10 +1086,10 @@ Best,
                       </button>
                     </div>
                   )}
-                  
+
                   {selectedCustomer.timeline.parentSupportEmailSent && (
                     <div className="p-3 bg-green-100 border border-green-200 rounded-lg">
-                      <p className="text-sm text-green-800 font-medium">✓ Customer onboarding completed!</p>
+                      <p className="text-sm text-green-800 font-medium">Parent Support email sent on {formatDateTime(selectedCustomer.timeline.parentSupportEmailSent)}</p>
                     </div>
                   )}
                 </div>
@@ -1014,7 +1117,7 @@ Best,
               {Object.entries(emailTemplates).map(([type, template]) => (
                 <div key={type} className="border rounded-lg p-4 bg-gray-50">
                   <h4 className="text-lg font-semibold capitalize mb-2 text-gray-800">
-                    {type === 'parentSupport' ? 'Parent Support' : type}
+                    {type === 'parentSupport' ? 'Parent Support' : type === 'esaTips' ? 'ESA Tips' : type}
                   </h4>
                   
                   <label className="block text-sm text-gray-700 mb-1">Subject</label>
@@ -1068,9 +1171,9 @@ Best,
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
           <div className="relative top-10 mx-auto p-5 border w-4/5 max-w-3xl shadow-lg rounded-md bg-white">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-medium text-gray-900">
-                Send {emailType.charAt(0).toUpperCase() + emailType.slice(1)} Email
-              </h3>
+                <h3 className="text-xl font-medium text-gray-900">
+                  Send {emailType === 'parentSupport' ? 'Parent Support' : emailType === 'esaTips' ? 'ESA Tips' : emailType.charAt(0).toUpperCase() + emailType.slice(1)} Email
+                </h3>
               <button
                 onClick={() => setShowEmailModal(false)}
                 className="text-gray-400 hover:text-gray-600"
