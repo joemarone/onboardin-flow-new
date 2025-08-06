@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 
-export default function CustomerTable({ onSelect }) {
+export default function CustomerTable({ onSelect, refreshSignal }) {
   const [rows, setRows] = useState([]);
 
   async function load() {
@@ -17,7 +17,7 @@ export default function CustomerTable({ onSelect }) {
     setRows(data || []);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [refreshSignal]);
 
   return (
     <section>

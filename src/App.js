@@ -1,5 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { User, Mail, Calendar, CheckCircle, Clock, Users, Send, Eye, Plus, Edit2, Trash2, Check, X, Settings, ChevronUp, ChevronDown, FileText, Copy } from 'lucide-react';
+import CustomerTable from './components/CustomerTable';
+import ParentForm from './components/ParentForm';
 
 const SalesFlowApp = () => {
   const [programAdvisors, setProgramAdvisors] = useState([
@@ -17,16 +19,7 @@ const SalesFlowApp = () => {
   const [sortField, setSortField] = useState('');
   const [sortDirection, setSortDirection] = useState('asc');
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newCustomer, setNewCustomer] = useState({
-    parentFirstName: '',
-    parentLastName: '',
-    parentEmail: '',
-    studentFirstName: '',
-    studentLastName: '',
-    startDate: '',
-    isTransfer: false,
-    advisorId: 1
-  });
+  const [refreshSignal, setRefreshSignal] = useState(0);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailType, setEmailType] = useState('');
   const [emailContent, setEmailContent] = useState('');
@@ -223,46 +216,6 @@ Best regards,
     }));
   };
 
-  const addCustomer = () => {
-    if (!validateEmail(newCustomer.parentEmail)) {
-      alert('Please enter a valid email address');
-      return;
-    }
-
-    const customer = {
-      id: Date.now(),
-      ...newCustomer,
-      step: 1,
-      status: 'step-1',
-      createdAt: new Date(),
-      timeline: {
-        initial: new Date(),
-        converted: false,
-        esaFunds: false,
-        confirmationEmailSent: null,
-        esaTipsEmailSent: null,
-        consentsCompleted: false,
-        paymentCompleted: false,
-        enrollmentEmailSent: null,
-        parentSupportEmailSent: null,
-        completed: null
-      },
-      notes: []
-    };
-    
-    setCustomers([...customers, customer]);
-    setNewCustomer({
-      parentFirstName: '',
-      parentLastName: '',
-      parentEmail: '',
-      studentFirstName: '',
-      studentLastName: '',
-      startDate: '',
-      isTransfer: false,
-      advisorId: 1
-    });
-    setShowAddForm(false);
-  };
 
   const updateCustomerStatus = (customerId, field, value) => {
     setCustomers(customers.map(customer => {
@@ -522,108 +475,7 @@ Best regards,
             <h2 className="text-lg font-medium text-gray-900">Customer Onboarding Pipeline</h2>
           </div>
           
-          {customers.length === 0 ? (
-            <div className="text-center py-12">
-              <Users className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No customers yet</h3>
-              <p className="mt-1 text-sm text-gray-500">This is a working base - we can add features back step by step.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th 
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                      onClick={() => handleSort('customer')}
-                    >
-                      <div className="flex items-center">
-                        Customer
-                        <SortIcon field="customer" />
-                      </div>
-                    </th>
-                    <th 
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                      onClick={() => handleSort('student')}
-                    >
-                      <div className="flex items-center">
-                        Student
-                        <SortIcon field="student" />
-                      </div>
-                    </th>
-                    <th 
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                      onClick={() => handleSort('status')}
-                    >
-                      <div className="flex items-center">
-                        Status
-                        <SortIcon field="status" />
-                      </div>
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {getSortedCustomers().map((customer) => (
-                    <tr key={customer.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {customer.parentFirstName} {customer.parentLastName}
-                          </div>
-                          <div className="text-sm text-gray-500">{customer.parentEmail}</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {customer.studentFirstName} {customer.studentLastName}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(customer.status)}`}>
-                          {getStatusDisplay(customer)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => setSelectedCustomer(customer)}
-                            className="text-blue-600 hover:text-blue-900"
-                            title="View Details"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => addNote(customer.id)}
-                            className="text-gray-600 hover:text-gray-900"
-                            title="Add Note"
-                          >
-                            <FileText className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => deleteCustomer(customer.id)}
-                            className="text-red-600 hover:text-red-900"
-                            title="Delete Customer"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{customer.notes ? customer.notes.length : 0}</div>
-                        {customer.notes && customer.notes.length > 0 && (
-                          <div className="text-xs text-gray-500">
-                            {formatDateTime(customer.notes[customer.notes.length - 1].timestamp)}
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <CustomerTable refreshSignal={refreshSignal} />
         </div>
       </div>
 
@@ -631,110 +483,10 @@ Best regards,
       {showAddForm && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
           <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Add Customer to Onboarding</h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Parent First Name</label>
-                  <input
-                    type="text"
-                    value={newCustomer.parentFirstName}
-                    onChange={(e) => setNewCustomer({...newCustomer, parentFirstName: e.target.value})}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Parent Last Name</label>
-                  <input
-                    type="text"
-                    value={newCustomer.parentLastName}
-                    onChange={(e) => setNewCustomer({...newCustomer, parentLastName: e.target.value})}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Parent Email</label>
-                  <input
-                    type="email"
-                    value={newCustomer.parentEmail}
-                    onChange={(e) => setNewCustomer({...newCustomer, parentEmail: e.target.value})}
-                    required
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Student First Name</label>
-                  <input
-                    type="text"
-                    value={newCustomer.studentFirstName}
-                    onChange={(e) => setNewCustomer({...newCustomer, studentFirstName: e.target.value})}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Student Last Name</label>
-                  <input
-                    type="text"
-                    value={newCustomer.studentLastName}
-                    onChange={(e) => setNewCustomer({...newCustomer, studentLastName: e.target.value})}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Start Date</label>
-                  <input
-                    type="date"
-                    value={newCustomer.startDate}
-                    onChange={(e) => setNewCustomer({...newCustomer, startDate: e.target.value})}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Program Advisor</label>
-                  <select
-                    value={newCustomer.advisorId}
-                    onChange={(e) => setNewCustomer({...newCustomer, advisorId: parseInt(e.target.value)})}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    {programAdvisors.map(advisor => (
-                      <option key={advisor.id} value={advisor.id}>{advisor.name}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={newCustomer.isTransfer}
-                    onChange={(e) => setNewCustomer({...newCustomer, isTransfer: e.target.checked})}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label className="ml-2 block text-sm text-gray-900">Transfer Student</label>
-                </div>
-              </div>
-              
-              <div className="flex justify-end space-x-3 mt-6">
-                <button
-                  onClick={() => setShowAddForm(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={addCustomer}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
-                >
-                  Add Customer
-                </button>
-              </div>
+            <div className="flex justify-end">
+              <button onClick={() => setShowAddForm(false)} className="text-gray-500">✕</button>
             </div>
+            <ParentForm onCreated={() => { setShowAddForm(false); setRefreshSignal(prev => prev + 1); }} />
           </div>
         </div>
       )}
