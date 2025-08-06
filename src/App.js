@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { User, Mail, Calendar, CheckCircle, Clock, Users, Send, Eye, Plus, Edit2, Trash2, Check, X, Settings, ChevronUp, ChevronDown, FileText, Copy } from 'lucide-react';
+import { User, Mail, Calendar, CheckCircle, Clock, Users, Send, Plus, Edit2, Trash2, Check, X, Settings, Copy } from 'lucide-react';
+import CustomerTable from './components/CustomerTable';
 
 const SalesFlowApp = () => {
   const [programAdvisors, setProgramAdvisors] = useState([
@@ -14,8 +15,6 @@ const SalesFlowApp = () => {
 
   const [customers, setCustomers] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [sortField, setSortField] = useState('');
-  const [sortDirection, setSortDirection] = useState('asc');
   const [showAddForm, setShowAddForm] = useState(false);
   const [newCustomer, setNewCustomer] = useState({
     parentFirstName: '',
@@ -80,15 +79,6 @@ const SalesFlowApp = () => {
     }
     
     setProgramAdvisors(programAdvisors.filter(advisor => advisor.id !== id));
-  };
-
-  const deleteCustomer = (customerId) => {
-    if (window.confirm('Are you sure you want to delete this customer? This action cannot be undone.')) {
-      setCustomers(customers.filter(customer => customer.id !== customerId));
-      if (selectedCustomer && selectedCustomer.id === customerId) {
-        setSelectedCustomer(null);
-      }
-    }
   };
 
   const addNote = (customerId) => {
@@ -345,71 +335,6 @@ Best regards,
     setShowEmailModal(false);
   };
 
-  const handleSort = (field) => {
-    const direction = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc';
-    setSortField(field);
-    setSortDirection(direction);
-  };
-
-  const getSortedCustomers = () => {
-    if (!sortField) return customers;
-    
-    return [...customers].sort((a, b) => {
-      let aValue, bValue;
-      
-      switch (sortField) {
-        case 'customer':
-          aValue = `${a.parentFirstName} ${a.parentLastName}`.toLowerCase();
-          bValue = `${b.parentFirstName} ${b.parentLastName}`.toLowerCase();
-          break;
-        case 'student':
-          aValue = `${a.studentFirstName} ${a.studentLastName}`.toLowerCase();
-          bValue = `${b.studentFirstName} ${b.studentLastName}`.toLowerCase();
-          break;
-        case 'status':
-          aValue = a.status;
-          bValue = b.status;
-          break;
-        default:
-          return 0;
-      }
-      
-      if (sortDirection === 'asc') {
-        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-      } else {
-        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
-      }
-    });
-  };
-
-  const SortIcon = ({ field }) => {
-    if (sortField !== field) {
-      return <span className="text-gray-400 ml-1">↕</span>;
-    }
-    return sortDirection === 'asc' ? 
-      <ChevronUp className="h-4 w-4 ml-1 text-blue-600" /> : 
-      <ChevronDown className="h-4 w-4 ml-1 text-blue-600" />;
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'step-1': return 'bg-blue-100 text-blue-800';
-      case 'step-2': return 'bg-yellow-100 text-yellow-800';
-      case 'step-3': return 'bg-purple-100 text-purple-800';
-      case 'completed': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusDisplay = (customer) => {
-    switch (customer.status) {
-      case 'step-1': return 'Step 1: Convert';
-      case 'step-2': return 'Step 2: Process';
-      case 'step-3': return 'Step 3: Support';
-      case 'completed': return 'Completed';
-      default: return 'Step 1: Convert';
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -518,112 +443,7 @@ Best regards,
 
         {/* Customer List */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">Customer Onboarding Pipeline</h2>
-          </div>
-          
-          {customers.length === 0 ? (
-            <div className="text-center py-12">
-              <Users className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No customers yet</h3>
-              <p className="mt-1 text-sm text-gray-500">This is a working base - we can add features back step by step.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th 
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                      onClick={() => handleSort('customer')}
-                    >
-                      <div className="flex items-center">
-                        Customer
-                        <SortIcon field="customer" />
-                      </div>
-                    </th>
-                    <th 
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                      onClick={() => handleSort('student')}
-                    >
-                      <div className="flex items-center">
-                        Student
-                        <SortIcon field="student" />
-                      </div>
-                    </th>
-                    <th 
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                      onClick={() => handleSort('status')}
-                    >
-                      <div className="flex items-center">
-                        Status
-                        <SortIcon field="status" />
-                      </div>
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {getSortedCustomers().map((customer) => (
-                    <tr key={customer.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {customer.parentFirstName} {customer.parentLastName}
-                          </div>
-                          <div className="text-sm text-gray-500">{customer.parentEmail}</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {customer.studentFirstName} {customer.studentLastName}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(customer.status)}`}>
-                          {getStatusDisplay(customer)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => setSelectedCustomer(customer)}
-                            className="text-blue-600 hover:text-blue-900"
-                            title="View Details"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => addNote(customer.id)}
-                            className="text-gray-600 hover:text-gray-900"
-                            title="Add Note"
-                          >
-                            <FileText className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => deleteCustomer(customer.id)}
-                            className="text-red-600 hover:text-red-900"
-                            title="Delete Customer"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{customer.notes ? customer.notes.length : 0}</div>
-                        {customer.notes && customer.notes.length > 0 && (
-                          <div className="text-xs text-gray-500">
-                            {formatDateTime(customer.notes[customer.notes.length - 1].timestamp)}
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <CustomerTable onSelect={setSelectedCustomer} />
         </div>
       </div>
 
