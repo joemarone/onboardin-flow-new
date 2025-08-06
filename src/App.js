@@ -334,16 +334,11 @@ Best regards,
         htmlContent: content.replace(/\n/g, '<br>')
       };
 
-      const response = await fetch(webhookUrl, {
+      await fetch(webhookUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        mode: 'no-cors',
         body: JSON.stringify(payload)
       });
-
-      const data = await response.json();
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Failed to send email');
-      }
 
       updateCustomerStatus(customerId, timelineField, new Date());
       setEmailSent(true);

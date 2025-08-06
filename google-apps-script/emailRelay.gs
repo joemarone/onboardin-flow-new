@@ -5,7 +5,6 @@ function doPost(e) {
     htmlBody: data.htmlContent,
     name: data.fromName,
     replyTo: data.from,
-    from: data.from,
   });
 
   return ContentService
