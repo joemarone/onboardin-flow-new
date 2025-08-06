@@ -94,8 +94,7 @@ const SalesFlowApp = () => {
   const addNote = (customerId) => {
     const noteText = window.prompt('Enter note');
     if (!noteText) return;
-    const noteLink = window.prompt('Enter link (optional)');
-    const note = { text: noteText, link: noteLink || null, timestamp: new Date() };
+    const note = { text: noteText, timestamp: new Date() };
     setCustomers(customers.map(c => {
       if (c.id === customerId) {
         const updatedCustomer = { ...c, notes: [...(c.notes || []), note] };
@@ -130,6 +129,17 @@ const SalesFlowApp = () => {
         /\{\{supportName\}\}/g,
         parentSupportStaff.find(ps => ps.id === selectedSupportSpecialist).name || ''
       );
+  };
+
+  const getTemplateHtml = (type, customer) => {
+    const body = populateTemplate(emailTemplates[type].body, customer);
+    return templateModes[type] === 'html'
+      ? body
+      : body.replace(/\n/g, '<br />');
+  };
+
+  const applyFormat = (command, value = null) => {
+    document.execCommand(command, false, value);
   };
 
   const [emailTemplates, setEmailTemplates] = useState({
@@ -953,16 +963,6 @@ Best regards,
                       {selectedCustomer.notes.map((note, idx) => (
                         <li key={idx} className="border-b pb-1">
                           <span className="font-medium">{formatDateTime(note.timestamp)}:</span> {note.text}
-                          {note.link && (
-                            <a
-                              href={note.link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 underline ml-1"
-                            >
-                              {note.link}
-                            </a>
-                          )}
                         </li>
                       ))}
                     </ul>
@@ -1010,7 +1010,7 @@ Best regards,
                         <button
                           onClick={() => {
                             setEmailType('confirmation');
-                            setEmailContent(populateTemplate(emailTemplates.confirmation.body, selectedCustomer));
+                            setEmailContent(getTemplateHtml('confirmation', selectedCustomer));
                             setShowEmailModal(true);
                           }}
                           className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center"
@@ -1028,7 +1028,7 @@ Best regards,
                         <button
                           onClick={() => {
                             setEmailType('esaTips');
-                            setEmailContent(populateTemplate(emailTemplates.esaTips.body, selectedCustomer));
+                            setEmailContent(getTemplateHtml('esaTips', selectedCustomer));
                             setShowEmailModal(true);
                           }}
                           className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center"
@@ -1073,7 +1073,7 @@ Best regards,
                           <button
                               onClick={() => {
                                 setEmailType('enrollment');
-                                setEmailContent(populateTemplate(emailTemplates.enrollment.body, selectedCustomer));
+                                setEmailContent(getTemplateHtml('enrollment', selectedCustomer));
                                 setShowEmailModal(true);
                               }}
                             className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 flex items-center"
@@ -1110,7 +1110,7 @@ Best regards,
                       <button
                           onClick={() => {
                           setEmailType('parentSupport');
-                          setEmailContent(populateTemplate(emailTemplates.parentSupport.body, selectedCustomer));
+                          setEmailContent(getTemplateHtml('parentSupport', selectedCustomer));
                           setShowEmailModal(true);
                         }}
                         className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 flex items-center"
@@ -1163,13 +1163,64 @@ Best regards,
                   />
                   
                   <label className="block text-sm text-gray-700 mb-1">Body</label>
-                  <textarea
-                    rows={8}
-                    value={template.body}
-                    onChange={(e) => updateEmailTemplate(type, 'body', e.target.value)}
-                    className="w-full mt-1 px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
-                  />
-                  
+                  {templateModes[type] === 'text' ? (
+                    <textarea
+                      rows={8}
+                      value={template.body}
+                      onChange={(e) => updateEmailTemplate(type, 'body', e.target.value)}
+                      className="w-full mt-1 px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                    />
+                  ) : (
+                    <div>
+                      <div className="flex space-x-2 mb-2">
+                        <button
+                          onClick={() => applyFormat('bold')}
+                          onMouseDown={(e) => e.preventDefault()}
+                          className="px-2 py-1 border rounded text-xs font-semibold"
+                        >
+                          B
+                        </button>
+                        <button
+                          onClick={() => applyFormat('italic')}
+                          onMouseDown={(e) => e.preventDefault()}
+                          className="px-2 py-1 border rounded text-xs italic"
+                        >
+                          I
+                        </button>
+                        <button
+                          onClick={() => {
+                            const url = window.prompt('Enter URL');
+                            if (url) applyFormat('createLink', url);
+                          }}
+                          onMouseDown={(e) => e.preventDefault()}
+                          className="px-2 py-1 border rounded text-xs"
+                        >
+                          Link
+                        </button>
+                        <button
+                          onClick={() => applyFormat('formatBlock', 'h1')}
+                          onMouseDown={(e) => e.preventDefault()}
+                          className="px-2 py-1 border rounded text-xs"
+                        >
+                          H1
+                        </button>
+                        <button
+                          onClick={() => applyFormat('formatBlock', 'h2')}
+                          onMouseDown={(e) => e.preventDefault()}
+                          className="px-2 py-1 border rounded text-xs"
+                        >
+                          H2
+                        </button>
+                      </div>
+                      <div
+                        contentEditable
+                        className="w-full mt-1 px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[150px]"
+                        dangerouslySetInnerHTML={{ __html: template.body }}
+                        onInput={(e) => updateEmailTemplate(type, 'body', e.currentTarget.innerHTML)}
+                      />
+                    </div>
+                  )}
+
                   <button
                     onClick={() => toggleTemplateMode(type)}
                     className="mt-2 text-xs text-blue-500 hover:underline"
@@ -1244,6 +1295,46 @@ Best regards,
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Message:</label>
+                <div className="flex space-x-2 mb-2">
+                  <button
+                    onClick={() => applyFormat('bold')}
+                    onMouseDown={(e) => e.preventDefault()}
+                    className="px-2 py-1 border rounded text-xs font-semibold"
+                  >
+                    B
+                  </button>
+                  <button
+                    onClick={() => applyFormat('italic')}
+                    onMouseDown={(e) => e.preventDefault()}
+                    className="px-2 py-1 border rounded text-xs italic"
+                  >
+                    I
+                  </button>
+                  <button
+                    onClick={() => {
+                      const url = window.prompt('Enter URL');
+                      if (url) applyFormat('createLink', url);
+                    }}
+                    onMouseDown={(e) => e.preventDefault()}
+                    className="px-2 py-1 border rounded text-xs"
+                  >
+                    Link
+                  </button>
+                  <button
+                    onClick={() => applyFormat('formatBlock', 'h1')}
+                    onMouseDown={(e) => e.preventDefault()}
+                    className="px-2 py-1 border rounded text-xs"
+                  >
+                    H1
+                  </button>
+                  <button
+                    onClick={() => applyFormat('formatBlock', 'h2')}
+                    onMouseDown={(e) => e.preventDefault()}
+                    className="px-2 py-1 border rounded text-xs"
+                  >
+                    H2
+                  </button>
+                </div>
                 <div
                   ref={emailContentRef}
                   contentEditable
