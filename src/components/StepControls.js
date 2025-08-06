@@ -1,24 +1,27 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 
 export default function StepControls({ customer, onUpdated }) {
   const [c, setC] = useState(customer);
 
+  useEffect(() => { setC(customer); }, [customer]);
+
   function set(k, v) { setC(prev => ({ ...prev, [k]: v })); }
 
   async function save() {
+    const updates = {
+      step1_converted: c.step1_converted,
+      step1_using_esa: c.step1_using_esa,
+      step2_consent:   c.step2_consent,
+      step2_payment:   c.step2_payment,
+      step:            c.step
+    };
     const { error } = await supabase
       .from('customers')
-      .update({
-        step1_converted: c.step1_converted,
-        step1_using_esa: c.step1_using_esa,
-        step2_consent:   c.step2_consent,
-        step2_payment:   c.step2_payment,
-        step:            c.step
-      })
+      .update(updates)
       .eq('id', c.id);
     if (error) return console.error(error);
-    if (onUpdated) onUpdated();
+    if (onUpdated) onUpdated({ ...c, ...updates });
   }
 
   return (
