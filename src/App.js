@@ -1,5 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { User, Mail, Calendar, CheckCircle, Clock, Users, Send, Eye, Plus, Edit2, Trash2, Check, X, Settings, ChevronUp, ChevronDown, FileText, Copy } from 'lucide-react';
+import EmailTemplates from './components/EmailTemplates';
+import { supabase } from './supabaseClient';
 
 const SalesFlowApp = () => {
   const [programAdvisors, setProgramAdvisors] = useState([
@@ -144,6 +146,7 @@ const SalesFlowApp = () => {
 
   const [emailTemplates, setEmailTemplates] = useState({
     confirmation: {
+      id: null,
       subject: 'Next Steps - Welcome to Alpha Anywhere!',
       body: `Hi {{parentFirstName}},
 
@@ -162,6 +165,7 @@ Best regards,
 {{advisorName}}`
     },
     enrollment: {
+      id: null,
       subject: 'Welcome to Alpha Anywhere - Let\'s Get Started!',
       body: `Dear {{parentFirstName}},
 
@@ -180,6 +184,7 @@ Warm regards,
 {{advisorName}}`
     },
     parentSupport: {
+      id: null,
       subject: 'Meet Your Parent Support Specialist',
       body: `Hi {{parentFirstName}},
 
@@ -196,6 +201,7 @@ Best,
 {{supportName}}`
     },
     esaTips: {
+      id: null,
       subject: 'Tips for Using ESA Funds',
       body: `Hi {{parentFirstName}},
 
@@ -205,6 +211,25 @@ Best regards,
 {{advisorName}}`
     }
   });
+
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      const { data, error } = await supabase
+        .from('email_templates')
+        .select('id, key, subject, body')
+        .order('key');
+      if (error) {
+        console.error('Error loading templates', error);
+        return;
+      }
+      const mapped = (data || []).reduce((acc, t) => {
+        acc[t.key] = { id: t.id, subject: t.subject, body: t.body };
+        return acc;
+      }, {});
+      setEmailTemplates(prev => ({ ...prev, ...mapped }));
+    };
+    fetchTemplates();
+  }, []);
 
   const updateEmailTemplate = (templateType, field, value) => {
     setEmailTemplates(prev => ({
@@ -221,6 +246,21 @@ Best regards,
       ...prev,
       [templateType]: prev[templateType] === 'text' ? 'html' : 'text'
     }));
+  };
+
+  const saveEmailTemplates = async () => {
+    const updates = Object.entries(emailTemplates).map(([key, tpl]) => ({
+      id: tpl.id,
+      key,
+      subject: tpl.subject,
+      body: tpl.body
+    }));
+    const { error } = await supabase.from('email_templates').upsert(updates);
+    if (error) {
+      console.error('Error saving templates', error);
+      return;
+    }
+    setShowTemplateEditor(false);
   };
 
   const addCustomer = () => {
@@ -744,7 +784,7 @@ Best regards,
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
           <div className="relative top-10 mx-auto p-5 border w-4/5 max-w-5xl shadow-lg rounded-md bg-white">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-medium text-gray-900">Manage Staff</h3>
+              <h3 className="text-xl font-medium text-gray-900">Manage Staff & Templates</h3>
               <button
                 onClick={() => setShowAdminPanel(false)}
                 className="text-gray-400 hover:text-gray-600"
@@ -752,8 +792,8 @@ Best regards,
                 ✕
               </button>
             </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Program Advisors */}
               <div>
                 <h4 className="text-lg font-medium text-gray-900 mb-4">Program Advisors</h4>
@@ -893,9 +933,9 @@ Best regards,
                   </div>
                 </div>
                 
-                {/* Existing Parent Support Staff */}
-                <div className="space-y-3">
-                  {parentSupportStaff.map((support) => (
+              {/* Existing Parent Support Staff */}
+              <div className="space-y-3">
+                {parentSupportStaff.map((support) => (
                     <div key={support.id} className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg">
                       <div className="flex-1">
                         <div className="text-sm font-medium text-gray-900">{support.name}</div>
@@ -923,6 +963,7 @@ Best regards,
                 </div>
               </div>
             </div>
+            <EmailTemplates templates={emailTemplates} onEdit={() => setShowTemplateEditor(true)} />
           </div>
         </div>
       )}
@@ -1241,7 +1282,7 @@ Best regards,
             
             <div className="mt-6 text-center">
               <button
-                onClick={() => setShowTemplateEditor(false)}
+                onClick={saveEmailTemplates}
                 className="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
               >
                 Save Templates
