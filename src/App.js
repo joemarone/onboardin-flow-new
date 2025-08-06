@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { User, Mail, Calendar, CheckCircle, Clock, Users, Send, Eye, Plus, Edit2, Trash2, Check, X, Settings, ChevronUp, ChevronDown, FileText, Copy } from 'lucide-react';
+import { supabase } from './supabaseClient';
 
 const SalesFlowApp = () => {
   const [programAdvisors, setProgramAdvisors] = useState([
@@ -132,6 +133,7 @@ const SalesFlowApp = () => {
   };
 
   const getTemplateHtml = (type, customer) => {
+    if (!emailTemplates[type]) return '';
     const body = populateTemplate(emailTemplates[type].body, customer);
     return templateModes[type] === 'html'
       ? body
@@ -142,69 +144,28 @@ const SalesFlowApp = () => {
     document.execCommand(command, false, value);
   };
 
-  const [emailTemplates, setEmailTemplates] = useState({
-    confirmation: {
-      subject: 'Next Steps - Welcome to Alpha Anywhere!',
-      body: `Hi {{parentFirstName}},
+  const [emailTemplates, setEmailTemplates] = useState({});
 
-Thank you so much for choosing Alpha Anywhere for {{studentFirstName}}! We're excited to have you join our community.
-
-To complete your enrollment, please complete these two important steps:
-
-1. Complete the consent forms in our enrollment portal
-2. Set up your payment method
-
-Once these are complete, we'll send you a welcome package with everything you need to get {{studentFirstName}} started on {{startDate}}.
-
-If you have any questions, please don't hesitate to reach out!
-
-Best regards,
-{{advisorName}}`
-    },
-    enrollment: {
-      subject: 'Welcome to Alpha Anywhere - Let\'s Get Started!',
-      body: `Dear {{parentFirstName}},
-
-Welcome to Alpha Anywhere! We're thrilled that {{studentFirstName}} is joining us.
-
-Your enrollment is now complete and we're all set for your start date of {{startDate}}.
-
-Here's what happens next:
-- You'll receive your welcome materials within 24 hours
-- Our team will be in touch to schedule your first session
-- Access to our parent portal will be activated shortly
-
-We can't wait to begin this journey with {{studentFirstName}}!
-
-Warm regards,
-{{advisorName}}`
-    },
-    parentSupport: {
-      subject: 'Meet Your Parent Support Specialist',
-      body: `Hi {{parentFirstName}},
-
-I'm reaching out to introduce myself as your dedicated Parent Support Specialist. My name is {{supportName}}, and I'll be your go-to resource throughout {{studentFirstName}}'s journey with us.
-
-Here are a few pro tips to help you get started:
-• Set up a consistent study schedule
-• Create a dedicated learning space
-• Stay in regular communication with our team
-
-I'll be checking in regularly to ensure everything is going smoothly. Feel free to reach out anytime!
-
-Best,
-{{supportName}}`
-    },
-    esaTips: {
-      subject: 'Tips for Using ESA Funds',
-      body: `Hi {{parentFirstName}},
-
-Here are a few tips to help you make the most of your ESA funds for {{studentFirstName}}.
-
-Best regards,
-{{advisorName}}`
-    }
-  });
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      const { data, error } = await supabase
+        .from('email_templates')
+        .select('*');
+      if (error) {
+        console.error('Error fetching email templates:', error);
+        return;
+      }
+      const templates = (data || []).reduce((acc, template) => {
+        acc[template.key] = {
+          subject: template.subject,
+          body: template.body,
+        };
+        return acc;
+      }, {});
+      setEmailTemplates(templates);
+    };
+    fetchTemplates();
+  }, []);
 
   const updateEmailTemplate = (templateType, field, value) => {
     setEmailTemplates(prev => ({
