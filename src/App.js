@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { User, Mail, Calendar, CheckCircle, Clock, Users, Send, Eye, Plus, Edit2, Trash2, Check, X, Settings, ChevronUp, ChevronDown, FileText } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { User, Mail, Calendar, CheckCircle, Clock, Users, Send, Eye, Plus, Edit2, Trash2, Check, X, Settings, ChevronUp, ChevronDown, FileText, Copy } from 'lucide-react';
 
 const SalesFlowApp = () => {
   const [programAdvisors, setProgramAdvisors] = useState([
@@ -31,6 +31,7 @@ const SalesFlowApp = () => {
   const [emailType, setEmailType] = useState('');
   const [emailContent, setEmailContent] = useState('');
   const [emailSent, setEmailSent] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
   const [selectedSupportSpecialist, setSelectedSupportSpecialist] = useState(1);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [editingAdvisor, setEditingAdvisor] = useState(null);
@@ -42,6 +43,8 @@ const SalesFlowApp = () => {
     parentSupport: 'text',
     esaTips: 'text'
   });
+
+  const emailContentRef = useRef(null);
 
   const addAdvisor = () => {
     if (!newAdvisor.name || !validateEmail(newAdvisor.email)) {
@@ -91,7 +94,8 @@ const SalesFlowApp = () => {
   const addNote = (customerId) => {
     const noteText = window.prompt('Enter note');
     if (!noteText) return;
-    const note = { text: noteText, timestamp: new Date() };
+    const noteLink = window.prompt('Enter link (optional)');
+    const note = { text: noteText, link: noteLink || null, timestamp: new Date() };
     setCustomers(customers.map(c => {
       if (c.id === customerId) {
         const updatedCustomer = { ...c, notes: [...(c.notes || []), note] };
@@ -111,6 +115,21 @@ const SalesFlowApp = () => {
 
   const formatDateTime = (date) => {
     return new Date(date).toLocaleString();
+  };
+
+  const populateTemplate = (content, customer) => {
+    return content
+      .replace(/\{\{parentFirstName\}\}/g, customer.parentFirstName)
+      .replace(/\{\{studentFirstName\}\}/g, customer.studentFirstName)
+      .replace(/\{\{startDate\}\}/g, customer.startDate)
+      .replace(
+        /\{\{advisorName\}\}/g,
+        programAdvisors.find(pa => pa.id === customer.advisorId).name || ''
+      )
+      .replace(
+        /\{\{supportName\}\}/g,
+        parentSupportStaff.find(ps => ps.id === selectedSupportSpecialist).name || ''
+      );
   };
 
   const [emailTemplates, setEmailTemplates] = useState({
@@ -281,39 +300,26 @@ Best regards,
     }));
   };
 
-  const sendEmail = async (customerId, type, customContent = '') => {
-    const customer = customers.find(c => c.id === customerId);
-    let senderEmail, senderName;
-
-    if (type === 'parentSupport') {
-      const supportSpecialist = parentSupportStaff.find(
-        ps => ps.id === selectedSupportSpecialist
-      );
-      senderEmail = supportSpecialist.email;
-      senderName = supportSpecialist.name;
-    } else {
-      const advisor = programAdvisors.find(pa => pa.id === customer.advisorId);
-      senderEmail = advisor.email;
-      senderName = advisor.name;
+  const copyEmail = async () => {
+    if (emailContentRef.current) {
+      const html = emailContentRef.current.innerHTML;
+      try {
+        if (navigator.clipboard && navigator.clipboard.write) {
+          const blobInput = new Blob([html], { type: 'text/html' });
+          const clipboardItem = new ClipboardItem({ 'text/html': blobInput });
+          await navigator.clipboard.write([clipboardItem]);
+        } else {
+          await navigator.clipboard.writeText(html);
+        }
+        setCopySuccess(true);
+        setTimeout(() => setCopySuccess(false), 3000);
+      } catch (err) {
+        console.error('Copy failed', err);
+      }
     }
+  };
 
-    let template = emailTemplates[type];
-    let content = customContent || template.body;
-
-    // Merge fields
-    content = content
-      .replace(/\{\{parentFirstName\}\}/g, customer.parentFirstName)
-      .replace(/\{\{studentFirstName\}\}/g, customer.studentFirstName)
-      .replace(/\{\{startDate\}\}/g, customer.startDate)
-      .replace(
-        /\{\{advisorName\}\}/g,
-        programAdvisors.find(pa => pa.id === customer.advisorId).name || ''
-      )
-      .replace(
-        /\{\{supportName\}\}/g,
-        parentSupportStaff.find(ps => ps.id === selectedSupportSpecialist).name || ''
-      );
-
+  const markEmailSent = (customerId, type) => {
     const timelineField =
       type === 'confirmation'
         ? 'confirmationEmailSent'
@@ -323,36 +329,10 @@ Best regards,
         ? 'parentSupportEmailSent'
         : 'esaTipsEmailSent';
 
-    try {
-      const webhookUrl = "https://script.google.com/macros/s/AKfycbx7Uz0vs-uBtSotcuJO71036SK3HuNEpqkxZMM7EcAR587q994SETXYjYbhrV63HOBPaw/exec";
-
-      const payload = {
-        to: customer.parentEmail,
-        from: senderEmail,
-        fromName: senderName,
-        subject: template.subject,
-        htmlContent: content.replace(/\n/g, '<br>')
-      };
-
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await response.json();
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Failed to send email');
-      }
-
-      updateCustomerStatus(customerId, timelineField, new Date());
-      setEmailSent(true);
-      setTimeout(() => setEmailSent(false), 3000);
-      setShowEmailModal(false);
-    } catch (error) {
-      console.error('Error sending email:', error);
-      alert('Failed to send email. Please try again later.');
-    }
+    updateCustomerStatus(customerId, timelineField, new Date());
+    setEmailSent(true);
+    setTimeout(() => setEmailSent(false), 3000);
+    setShowEmailModal(false);
   };
 
   const handleSort = (field) => {
@@ -423,11 +403,17 @@ Best regards,
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Email Sent Confirmation */}
+      {/* Notifications */}
       {emailSent && (
         <div className="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center">
           <CheckCircle className="h-5 w-5 mr-2" />
-          Email sent successfully!
+          Email marked as sent!
+        </div>
+      )}
+      {copySuccess && (
+        <div className="fixed top-16 right-4 bg-blue-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center">
+          <Check className="h-5 w-5 mr-2" />
+          Email copied to clipboard!
         </div>
       )}
 
@@ -565,6 +551,7 @@ Best regards,
                       </div>
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -612,6 +599,14 @@ Best regards,
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{customer.notes ? customer.notes.length : 0}</div>
+                        {customer.notes && customer.notes.length > 0 && (
+                          <div className="text-xs text-gray-500">
+                            {formatDateTime(customer.notes[customer.notes.length - 1].timestamp)}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -958,6 +953,16 @@ Best regards,
                       {selectedCustomer.notes.map((note, idx) => (
                         <li key={idx} className="border-b pb-1">
                           <span className="font-medium">{formatDateTime(note.timestamp)}:</span> {note.text}
+                          {note.link && (
+                            <a
+                              href={note.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 underline ml-1"
+                            >
+                              {note.link}
+                            </a>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -1005,7 +1010,7 @@ Best regards,
                         <button
                           onClick={() => {
                             setEmailType('confirmation');
-                            setEmailContent(emailTemplates.confirmation.body);
+                            setEmailContent(populateTemplate(emailTemplates.confirmation.body, selectedCustomer));
                             setShowEmailModal(true);
                           }}
                           className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center"
@@ -1023,7 +1028,7 @@ Best regards,
                         <button
                           onClick={() => {
                             setEmailType('esaTips');
-                            setEmailContent(emailTemplates.esaTips.body);
+                            setEmailContent(populateTemplate(emailTemplates.esaTips.body, selectedCustomer));
                             setShowEmailModal(true);
                           }}
                           className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center"
@@ -1066,11 +1071,11 @@ Best regards,
                           <p className="text-sm text-gray-600">Enrollment email sent on {formatDateTime(selectedCustomer.timeline.enrollmentEmailSent)}</p>
                         ) : (
                           <button
-                            onClick={() => {
-                              setEmailType('enrollment');
-                              setEmailContent(emailTemplates.enrollment.body);
-                              setShowEmailModal(true);
-                            }}
+                              onClick={() => {
+                                setEmailType('enrollment');
+                                setEmailContent(populateTemplate(emailTemplates.enrollment.body, selectedCustomer));
+                                setShowEmailModal(true);
+                              }}
                             className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 flex items-center"
                           >
                             <Send className="h-4 w-4 mr-2" />
@@ -1103,9 +1108,9 @@ Best regards,
                       </div>
 
                       <button
-                        onClick={() => {
+                          onClick={() => {
                           setEmailType('parentSupport');
-                          setEmailContent(emailTemplates.parentSupport.body);
+                          setEmailContent(populateTemplate(emailTemplates.parentSupport.body, selectedCustomer));
                           setShowEmailModal(true);
                         }}
                         className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 flex items-center"
@@ -1231,23 +1236,23 @@ Best regards,
                 <label className="block text-sm font-medium text-gray-700 mb-2">Subject:</label>
                 <input
                   type="text"
-                  value={emailTemplates[emailType] && emailTemplates[emailType].subject ? emailTemplates[emailType].subject : ''}
+                  value={emailTemplates[emailType] ? populateTemplate(emailTemplates[emailType].subject || '', selectedCustomer) : ''}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   readOnly
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Message:</label>
-                <textarea
-                  rows={12}
-                  value={emailContent}
-                  onChange={(e) => setEmailContent(e.target.value)}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Customize your email message here..."
+                <div
+                  ref={emailContentRef}
+                  contentEditable
+                  onInput={(e) => setEmailContent(e.currentTarget.innerHTML)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[200px]"
+                  dangerouslySetInnerHTML={{ __html: emailContent }}
                 />
               </div>
-              
+
               <div className="flex justify-end space-x-3 pt-4">
                 <button
                   onClick={() => setShowEmailModal(false)}
@@ -1256,11 +1261,18 @@ Best regards,
                   Cancel
                 </button>
                 <button
-                  onClick={() => sendEmail(selectedCustomer.id, emailType, emailContent)}
+                  onClick={copyEmail}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 flex items-center"
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy Email
+                </button>
+                <button
+                  onClick={() => markEmailSent(selectedCustomer.id, emailType)}
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 flex items-center"
                 >
-                  <Send className="h-4 w-4 mr-2" />
-                  Send Email
+                  <Check className="h-4 w-4 mr-2" />
+                  Mark as Sent
                 </button>
               </div>
             </div>
