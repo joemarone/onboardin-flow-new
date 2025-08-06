@@ -325,6 +325,10 @@ Best regards,
 
     try {
       const webhookUrl = process.env.REACT_APP_EMAIL_WEBHOOK_URL;
+      if (!webhookUrl) {
+        throw new Error('Missing email webhook URL');
+      }
+
       const payload = {
         to: customer.parentEmail,
         from: senderEmail,
