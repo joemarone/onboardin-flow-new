@@ -26,7 +26,12 @@ index 58beeaccd87e230076cab531b8f418f40b6d1aeb..8fccafc8bce1bc4bf01c7788fc724d8d
 +   ```bash
 +   npm install
 +   ```
-+2. Start the development server:
++2. Create a `.env` file based on `.env.example` and add your Supabase credentials:
++   ```bash
++   cp .env.example .env
++   ```
++   Fill in `REACT_APP_SUPABASE_URL` and `REACT_APP_SUPABASE_ANON_KEY`.
++3. Start the development server:
 +   ```bash
 +   npm start
 +   ```
