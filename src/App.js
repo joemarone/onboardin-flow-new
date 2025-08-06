@@ -281,12 +281,14 @@ Best regards,
     }));
   };
 
-  const sendEmail = (customerId, type, customContent = '') => {
+  const sendEmail = async (customerId, type, customContent = '') => {
     const customer = customers.find(c => c.id === customerId);
     let senderEmail, senderName;
-    
+
     if (type === 'parentSupport') {
-      const supportSpecialist = parentSupportStaff.find(ps => ps.id === selectedSupportSpecialist);
+      const supportSpecialist = parentSupportStaff.find(
+        ps => ps.id === selectedSupportSpecialist
+      );
       senderEmail = supportSpecialist.email;
       senderName = supportSpecialist.name;
     } else {
@@ -294,36 +296,62 @@ Best regards,
       senderEmail = advisor.email;
       senderName = advisor.name;
     }
-    
+
     let template = emailTemplates[type];
     let content = customContent || template.body;
-    
+
     // Merge fields
     content = content
       .replace(/\{\{parentFirstName\}\}/g, customer.parentFirstName)
       .replace(/\{\{studentFirstName\}\}/g, customer.studentFirstName)
       .replace(/\{\{startDate\}\}/g, customer.startDate)
-      .replace(/\{\{advisorName\}\}/g, programAdvisors.find(pa => pa.id === customer.advisorId).name || '')
-      .replace(/\{\{supportName\}\}/g, parentSupportStaff.find(ps => ps.id === selectedSupportSpecialist).name || '');
-    
-    console.log(`Email sent to ${customer.parentEmail} from ${senderEmail} (${senderName})`);
-    console.log(`Subject: ${template.subject}`);
-    console.log(`Content: ${content}`);
-    
-      const timelineField =
-        type === 'confirmation'
-          ? 'confirmationEmailSent'
-          : type === 'enrollment'
-          ? 'enrollmentEmailSent'
-          : type === 'parentSupport'
-          ? 'parentSupportEmailSent'
-          : 'esaTipsEmailSent';
-    
-    updateCustomerStatus(customerId, timelineField, new Date());
-    
-    setEmailSent(true);
-    setTimeout(() => setEmailSent(false), 3000);
-    setShowEmailModal(false);
+      .replace(
+        /\{\{advisorName\}\}/g,
+        programAdvisors.find(pa => pa.id === customer.advisorId).name || ''
+      )
+      .replace(
+        /\{\{supportName\}\}/g,
+        parentSupportStaff.find(ps => ps.id === selectedSupportSpecialist).name || ''
+      );
+
+    const timelineField =
+      type === 'confirmation'
+        ? 'confirmationEmailSent'
+        : type === 'enrollment'
+        ? 'enrollmentEmailSent'
+        : type === 'parentSupport'
+        ? 'parentSupportEmailSent'
+        : 'esaTipsEmailSent';
+
+    try {
+      const webhookUrl = process.env.REACT_APP_EMAIL_WEBHOOK_URL;
+      const payload = {
+        to: customer.parentEmail,
+        from: senderEmail,
+        fromName: senderName,
+        subject: template.subject,
+        htmlContent: content.replace(/\n/g, '<br>')
+      };
+
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to send email');
+      }
+
+      updateCustomerStatus(customerId, timelineField, new Date());
+      setEmailSent(true);
+      setTimeout(() => setEmailSent(false), 3000);
+      setShowEmailModal(false);
+    } catch (error) {
+      console.error('Error sending email:', error);
+      alert('Failed to send email. Please try again later.');
+    }
   };
 
   const handleSort = (field) => {
