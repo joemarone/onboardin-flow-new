@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 
-export default function CustomerTable({ onSelect, reload = 0 }) {
-  const [rows, setRows] = useState([]);
+export default function CustomerTable({ customers, onSelect, reload = 0 }) {
+  const [rows, setRows] = useState(customers || []);
 
   async function load() {
     const { data, error } = await supabase
@@ -17,7 +17,13 @@ export default function CustomerTable({ onSelect, reload = 0 }) {
     setRows(data || []);
   }
 
-  useEffect(() => { load(); }, [reload]);
+  useEffect(() => {
+    if (customers) {
+      setRows(customers);
+    } else {
+      load();
+    }
+  }, [customers, reload]);
 
   return (
     <section>
@@ -30,7 +36,7 @@ export default function CustomerTable({ onSelect, reload = 0 }) {
         </thead>
         <tbody>
           {rows.map(r => (
-            <tr key={r.id} onClick={()=>onSelect && onSelect(r)}>
+            <tr key={r.id} onClick={() => onSelect && onSelect(r)}>
               <td>{r.parent_first_name} {r.parent_last_name}</td>
               <td>{r.student_first_name} {r.student_last_name}</td>
               <td>{r.advisor?.name || '—'}</td>
