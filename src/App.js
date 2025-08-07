@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase } from './supabaseClient';
+import { supabase } from './supabaseClient.js';
 import ParentForm from './components/ParentForm';
 import CustomerTable from './components/CustomerTable';
 import StepControls from './components/StepControls';
