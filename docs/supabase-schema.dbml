@@ -1,0 +1,64 @@
+Table customers {
+  id uuid [pk]
+  created_at timestamp
+  updated_at timestamp
+  advisor_id uuid
+  support_id uuid
+  start_date date
+  transfer boolean
+  step varchar
+  step1_converted boolean
+  step1_using_esa boolean
+  step2_consent boolean
+  step2_payment boolean
+  completed_at timestamp
+  parent_first_name text
+  parent_last_name text
+  parent_email text
+  student_first_name text
+  student_last_name text
+}
+
+Table email_logs {
+  id uuid [pk]
+  customer_id uuid
+  template varchar
+  sent_by uuid
+  sent_at timestamp
+  to_email text
+}
+
+Table email_templates {
+  id uuid [pk]
+  key varchar
+  updated_by uuid
+  updated_at timestamp
+  subject text
+  body text
+}
+
+Table notes {
+  id uuid [pk]
+  customer_id uuid
+  author_id uuid
+  created_at timestamp
+  body text
+}
+
+Table staff {
+  id uuid [pk]
+  name text
+  email text
+  role varchar
+  active boolean
+  created_at timestamp
+}
+
+Ref: email_logs.customer_id > customers.id
+Ref: email_logs.sent_by > staff.id
+Ref: email_logs.template > email_templates.key
+Ref: notes.customer_id > customers.id
+Ref: notes.author_id > staff.id
+Ref: customers.advisor_id > staff.id
+Ref: customers.support_id > staff.id
+Ref: email_templates.updated_by > staff.id
