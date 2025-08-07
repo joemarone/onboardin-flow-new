@@ -1,34 +1,32 @@
 import { useEffect, useState } from 'react';
 import { Users, Clock, User, Mail, CheckCircle } from 'lucide-react';
 import CustomerTable from './components/CustomerTable';
-import ParentForm from './components/ParentForm';
-import Notes from './components/Notes';
-import EmailLogs from './components/EmailLogs';
-import EmailTemplates from './components/EmailTemplates';
-import StaffManager from './components/StaffManager';
-import StepControls from './components/StepControls';
-import { fetchCustomers } from './lib/api/customers.js';
+import { supabase } from './supabaseClient.js';
 
 export default function App() {
   const [customers, setCustomers] = useState([]);
-  const [selected, setSelected] = useState(null);
 
-  const loadCustomers = async () => {
-    try {
-      const data = await fetchCustomers();
-      setCustomers(data);
-      if (selected) {
-        const fresh = data.find(c => c.id === selected.id);
-        if (fresh) setSelected(fresh);
-      }
-    } catch (err) {
-      console.error(err);
+  useEffect(() => {
+    async function checkConnection() {
+      const { error } = await supabase
+        .from('customers')
+        .select('id', { count: 'exact', head: true });
+      if (error) console.error('Database connection error:', error.message);
+      else console.log('Database connection established');
     }
-  };
 
-  useEffect(() => { loadCustomers(); }, []);
+    async function load() {
+      const { data, error } = await supabase
+        .from('customers')
+        .select('*')
+        .order('created_at');
+      if (error) console.error(error);
+      setCustomers(data || []);
+    }
 
-  const stepCount = step => customers.filter(c => c.step === step).length;
+    checkConnection();
+    load();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -53,7 +51,7 @@ export default function App() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Step 1: Convert</p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {stepCount('step_1_convert')}
+                  {customers.filter(c => c.status === 'step-1').length}
                 </p>
               </div>
             </div>
@@ -65,7 +63,7 @@ export default function App() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Step 2: Process</p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {stepCount('step_2_process')}
+                  {customers.filter(c => c.status === 'step-2').length}
                 </p>
               </div>
             </div>
@@ -77,7 +75,7 @@ export default function App() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Step 3: Support</p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {stepCount('step_3_support')}
+                  {customers.filter(c => c.status === 'step-3').length}
                 </p>
               </div>
             </div>
@@ -89,34 +87,15 @@ export default function App() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Completed</p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {stepCount('completed')}
+                  {customers.filter(c => c.status === 'completed').length}
                 </p>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-              <CustomerTable customers={customers} onSelect={setSelected} />
-            </div>
-          </div>
-          <div className="space-y-6">
-            <ParentForm onCreated={loadCustomers} />
-            {selected && (
-              <>
-                <StepControls customer={selected} onUpdated={loadCustomers} />
-                <Notes customerId={selected.id} />
-                <EmailLogs customerId={selected.id} />
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <EmailTemplates />
-          <StaffManager />
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <CustomerTable customers={customers} onSelect={() => {}} />
         </div>
       </div>
     </div>
