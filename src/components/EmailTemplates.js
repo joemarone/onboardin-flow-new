@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../supabaseClient.js';
+import { fetchEmailTemplates, updateEmailTemplate } from '../lib/api/emailTemplates.js';
 import RichTextEditor from './RichTextEditor';
 
 export default function EmailTemplates() {
@@ -7,14 +7,9 @@ export default function EmailTemplates() {
   const [editing, setEditing] = useState(null);
 
   useEffect(() => {
-    (async () => {
-      const { data, error } = await supabase
-        .from('email_templates')
-        .select('*')
-        .order('key');
-      if (error) console.error(error);
-      setTemplates(data || []);
-    })();
+    fetchEmailTemplates()
+      .then(setTemplates)
+      .catch(console.error);
   }, []);
 
   const startEdit = t => {
@@ -22,13 +17,13 @@ export default function EmailTemplates() {
   };
 
   async function save() {
-    const { error } = await supabase
-      .from('email_templates')
-      .update({ subject: editing.subject, body: editing.body })
-      .eq('id', editing.id);
-    if (error) return console.error(error);
-    setTemplates(ts => ts.map(t => t.id === editing.id ? editing : t));
-    setEditing(null);
+    try {
+      await updateEmailTemplate(editing.id, { subject: editing.subject, body: editing.body });
+      setTemplates(ts => ts.map(t => t.id === editing.id ? editing : t));
+      setEditing(null);
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   return (

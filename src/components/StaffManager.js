@@ -1,16 +1,14 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../supabaseClient.js';
+import { fetchStaff } from '../lib/api/staff.js';
 
 export default function StaffManager() {
   const [staff, setStaff] = useState([]);
 
-  async function load() {
-    const { data, error } = await supabase.from('staff').select('*').order('created_at');
-    if (error) console.error(error);
-    setStaff(data || []);
-  }
-
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    fetchStaff()
+      .then(setStaff)
+      .catch(console.error);
+  }, []);
 
   return (
     <section>

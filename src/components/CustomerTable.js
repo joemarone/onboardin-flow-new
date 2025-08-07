@@ -1,24 +1,6 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '../supabaseClient.js';
+import React from 'react';
 
-export default function CustomerTable({ onSelect, reload = 0 }) {
-  const [rows, setRows] = useState([]);
-
-  async function load() {
-    const { data, error } = await supabase
-      .from('customers')
-      .select(`
-        *,
-        advisor:advisor_id (name,email),
-        support:support_id (name,email)
-      `)
-      .order('created_at');
-    if (error) console.error(error);
-    setRows(data || []);
-  }
-
-  useEffect(() => { load(); }, [reload]);
-
+export default function CustomerTable({ customers = [], onSelect }) {
   return (
     <section>
       <h2>Customers</h2>
@@ -29,8 +11,8 @@ export default function CustomerTable({ onSelect, reload = 0 }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map(r => (
-            <tr key={r.id} onClick={()=>onSelect && onSelect(r)}>
+          {customers.map(r => (
+            <tr key={r.id} onClick={() => onSelect && onSelect(r)}>
               <td>{r.parent_first_name} {r.parent_last_name}</td>
               <td>{r.student_first_name} {r.student_last_name}</td>
               <td>{r.advisor?.name || '—'}</td>

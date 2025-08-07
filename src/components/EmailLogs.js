@@ -1,20 +1,15 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../supabaseClient.js';
+import { fetchEmailLogs } from '../lib/api/emailLogs.js';
 
 export default function EmailLogs({ customerId }) {
   const [logs, setLogs] = useState([]);
 
-  async function load() {
-    const { data, error } = await supabase
-      .from('email_logs')
-      .select(`id, template, to_email, sent_at, sender:sent_by (name, email)`)
-      .eq('customer_id', customerId)
-      .order('sent_at', { ascending: false });
-    if (error) console.error(error);
-    setLogs(data || []);
-  }
-
-  useEffect(() => { if (customerId) load(); }, [customerId]);
+  useEffect(() => {
+    if (!customerId) return;
+    fetchEmailLogs(customerId)
+      .then(setLogs)
+      .catch(console.error);
+  }, [customerId]);
 
   return (
     <div>
