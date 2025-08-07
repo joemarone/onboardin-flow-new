@@ -1,28 +1,28 @@
 import { useEffect, useState } from 'react';
-import { fetchNotes, insertNote } from '../lib/api/notes.js';
+import { supabase } from '../supabaseClient.js';
 
 export default function Notes({ customerId }) {
   const [notes, setNotes] = useState([]);
   const [body, setBody] = useState('');
 
   async function load() {
-    try {
-      const data = await fetchNotes(customerId);
-      setNotes(data);
-    } catch (err) {
-      console.error(err);
-    }
+    const { data, error } = await supabase
+      .from('notes')
+      .select(`id, body, created_at, author:author_id (name, email)`)
+      .eq('customer_id', customerId)
+      .order('created_at', { ascending: false });
+    if (error) console.error(error);
+    setNotes(data || []);
   }
 
   async function addNote() {
     if (!body.trim()) return;
-    try {
-      await insertNote({ customer_id: customerId, body });
-      setBody('');
-      load();
-    } catch (err) {
-      console.error(err);
-    }
+    const { error } = await supabase
+      .from('notes')
+      .insert([{ customer_id: customerId, author_id: null, body }]);
+    if (error) return console.error(error);
+    setBody('');
+    load();
   }
 
   useEffect(() => { if (customerId) load(); }, [customerId]);
@@ -31,7 +31,7 @@ export default function Notes({ customerId }) {
     <div>
       <h4>Notes</h4>
       <div>
-        <textarea value={body} onChange={e => setBody(e.target.value)} />
+        <textarea value={body} onChange={e=>setBody(e.target.value)} />
         <button onClick={addNote}>Add</button>
       </div>
       <ul>
